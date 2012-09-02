@@ -1,0 +1,10 @@
+The cow.svg image is from the xcowsay project
+   http://www.doof.me.uk/xcowsay/
+
+xcowsay was written by:
+     
+     Nick Gasson <nick@cakesniffer.co.uk>
+
+The pt_BR translation was made by:
+    
+    Phantom X <megaphantomx@bol.com.br>

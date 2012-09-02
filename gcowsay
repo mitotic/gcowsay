@@ -1,0 +1,321 @@
+#!/usr/bin/env python
+#
+# The code in this file is released in the public domain,
+# and maybe re-used in any other project without any
+# restrictions.
+# It was developed as part of the GraphTerm project
+#    http://github.com/mitotic/graphterm
+
+"""
+  cowsay ASCII art
+  gcowsay Graphic art
+
+For more on cowsay, see http://en.wikipedia.org/wiki/Cowsay
+For more on GraphTerm, see https://github.com/mitotic/graphterm
+
+This is a simple, self-contained implementation of cowsay
+using the GraphTerm API. It has no direct dependence
+on the GraphTerm code, relying instead on escape sequences
+to access GraphTerm.
+"""
+
+import base64
+import json
+import mimetypes
+import os
+import sys
+import textwrap
+import time
+import uuid
+
+from optparse import OptionParser
+
+# GraphTerm environment variables
+Path = os.getenv("GRAPHTERM_PATH", "")
+Host, Session = Path.split("/") if Path else ("", "") 
+Lterm_cookie = os.getenv("GRAPHTERM_COOKIE", "")
+
+# Escape sequence delimiters
+Html_escapes = ["\x1b[?1155;%sh" % Lterm_cookie,
+                "\x1b[?1155l"]
+
+def wrap(html):
+    """Wrap in escape sequence"""
+    return Html_escapes[0] + html + Html_escapes[1]
+
+cowsay_template = """
+<html>
+  <head>
+    <title>gCowSay</title>
+    <style type="text/css">
+body
+{
+    font-family: arial, helvetica;
+    font-size: 1.5em;
+}
+
+div.cowcontainer {
+    width: 100%%;
+    height: 100%%;
+    position: relative;
+    overflow: hidden;
+}
+
+img.cowimg {
+   position: absolute;
+   bottom: 0;
+   left: 0;
+   max-width: 400px;
+}
+
+img.cropimg {
+   width: 400px;
+   margin-top: 0px;
+   margin-bottom: -270px;
+   margin-left: -30px;
+   margin-right: 0px;
+}
+
+div.textbubble
+{
+    position: absolute;
+    bottom: 160px;
+    min-width: 200px;
+    min-height: 35px;
+    text-align: center;
+    vertical-align: baseline;
+    margin-left: 20px;
+    background-color: #fff;
+    border: 6px solid #666;
+    -webkit-border-radius: 50px;
+    -moz-border-radius: 50px;
+    -webkit-box-shadow: 2px 2px 4px #888;
+    -moz-box-shadow: 2px 2px 4px #888;
+    box-shadow: 2px 2px 4px #888;
+}
+
+div.textbubble:before, div.textbubble:after
+{
+    content: ' ';
+    position: absolute;
+    width: 0;
+    height: 0;
+}
+
+div.thoughtbubble {
+    padding: 20px;
+    left: 260px;
+    border-radius: 50px;
+}
+
+div.thoughtbubble:before, div.thoughtbubble:after
+{
+    left: -25px;
+    bottom: -15px;
+    margin-top: 25px;
+    margin-bottom: -10px;
+    width: 40px;
+    height: 40px;
+    background-color: #fff;
+    border: 6px solid #666;
+    -webkit-border-radius: 28px;
+    -moz-border-radius: 28px;
+    border-radius: 28px;
+}
+
+div.thoughtbubble:after
+{
+    width: 20px;
+    height: 20px;
+    left: -35px;
+    bottom: -15px;
+    -webkit-border-radius: 18px;
+    -moz-border-radius: 18px;
+    border-radius: 18px;
+}
+
+div.speechbubble {
+    left: 220px;
+    padding: 20px;
+    border-radius: 30px;
+}
+
+div.speechbubble:before
+{
+    left: 30px;
+    bottom: -50px;
+    border: 25px solid;
+    border-color: #666 transparent transparent #666;
+}
+
+div.speechbubble:after
+{
+    left: 37px;
+    bottom: -35px;
+    border: 30px solid;
+    border-color: #fff transparent transparent #fff;
+}
+
+    </style>
+  </head>
+  <body>
+    <div class="cowcontainer">
+      <img src="%s" class="cowimg %s"/>
+      <div class="textbubble %s"><div class="inner">%s</div></div>
+    </div>
+  </body>
+</html>
+"""
+
+IFRAMEFORMAT = '<iframe src="%s" style="border: 0; min-width: 600; min-height: 350;"></iframe>'
+
+def create_blob(content, content_type="text/html"):
+    """Create blob to hold MIME content"""
+    params = {}
+    params["blob_id"] = str(uuid.uuid4())
+    blob_headers = {"x_gterm_response": "create_blob",
+                    "x_gterm_parameters": params,
+                    "content_type": content_type,
+                    "content_length": len(content)
+                    }
+
+    sys.stdout.write(wrap(json.dumps(blob_headers)+"\n\n"+base64.b64encode(content)))
+    sys.stdout.flush()
+
+    return "/blob/"+Host+"/"+params["blob_id"]
+
+def graphical_output(text, options):
+    """Display graphical cowsay"""
+    image_file = options.image or os.path.join(os.path.dirname(__file__), "cow.svg")
+
+    try:
+        with open(image_file) as fp:
+            img_content = fp.read()
+    except Exception, excp:
+        print >> sys.stderr, "Error in reading image file %s: %s" % (image_file, excp)
+        sys.exit(1)
+
+    mimetype, encoding = mimetypes.guess_type(image_file)
+    if not mimetype or not mimetype.startswith("image/"):
+        print >> sys.stderr, "File %s is not an image file" % image_file
+        sys.exit(1)
+
+    img_url = create_blob(img_content, content_type=mimetype)
+    img_crop = "" if options.image else "cropimg"
+
+    bubble_type = "thoughtbubble" if options.think else "speechbubble"
+    cowsay_html = cowsay_template % (img_url, img_crop, bubble_type, text)
+    iframe_url = create_blob(cowsay_html)
+
+    if options.popup:
+        headers = {"x_gterm_response": "open_url",
+                       "x_gterm_parameters": {"url": iframe_url,
+                                              "target": "_blank",
+                                              "width": "720",
+                                              "height": "400",
+                                             }
+                       }
+        sys.stdout.write(wrap(json.dumps(headers)+"\n\n"))
+        sys.stdout.flush()
+
+    else:
+        params = {"scroll": "top", "autosize": False, "opacity": 1.0, "current_directory": os.getcwd()}
+        params["display"] = "block"
+        if options.fullwindow:
+            params["display"] = "fullwindow"
+        if options.fullpage:
+            params["display"] = "fullpage"
+        params["blob_url"] = iframe_url
+
+        headers = {"content_type": "text/html"}
+        headers["x_gterm_response"] = "pagelet"
+        headers["x_gterm_parameters"] = params
+
+        sys.stdout.write(wrap(json.dumps(headers)+"\n\n"+(IFRAMEFORMAT % iframe_url)))
+        sys.stdout.flush()
+
+        if options.wait:
+            try:
+                while True:
+                    time.sleep(2)
+            except KeyboardInterrupt:
+                # Erase
+                sys.stdout.write(wrap(json.dumps(headers)+"\n\n"))
+                sys.stdout.flush()
+
+
+cow_ascii = """
+        \\   ^__^
+         \\  (oo)\\_______
+            (__)\\       )\\/\\
+                ||----w |
+                ||     ||
+"""
+
+def ascii_output(text, options):
+    """Display ASCII cowsay"""
+    lines = textwrap.wrap(text, options.width)
+    maxcols = max(len(x) for x in lines)
+    for j, line in enumerate(lines):
+        ncols = len(line)
+        nleft = (maxcols - ncols)/2
+        nright = maxcols - (ncols+nleft)
+        line = (" "*nleft) + line + (" "*nright)
+        if not j:
+            print "  _%s_ " % ("_"*maxcols)
+            print " / %s \\" % line
+
+        if j and j < len(lines)-1:
+            print "| %s   |" % line
+
+        if j == len(lines)-1 or len(lines) == 1:
+            print " \\ %s /" % (line if j else " "*maxcols)
+            print "  -%s- " % ("-"*maxcols),
+
+    print cow_ascii
+    sys.stdout.flush()
+
+usage = "usage: %prog [-f] [-t] word1 word2 ..."
+parser = OptionParser(usage=usage)
+parser.add_option("-f", "--fullwindow",
+                  action="store_true", dest="fullwindow", default=False,
+                  help="Fullwindow display")
+parser.add_option("", "--fullpage",
+                  action="store_true", dest="fullpage", default=False,
+                  help="Fullpage display")
+parser.add_option("", "--popup",
+                  action="store_true", dest="popup", default=False,
+                  help="Display popup")
+parser.add_option("-t", "--text",
+                  action="store_true", dest="text", default=False,
+                  help="Plain text (ASCII) display")
+parser.add_option("-w", "--width",
+                  dest="width", default=40, type="int",
+                  help="Width for ASCII display (default: 40)")
+parser.add_option("", "--think",
+                  action="store_true", dest="think", default=False,
+                  help="cowthink, instead of cowsay")
+parser.add_option("", "--wait",
+                  action="store_true", dest="wait", default=False,
+                  help="Wait, do not quit after display")
+parser.add_option("-i", "--image",
+                  dest="image", default="",
+                  help="Alternate image file")
+
+(options, args) = parser.parse_args()
+if args:
+    text = " ".join(args)
+else:
+    try:
+        text = sys.stdin.read()
+    except (EOFError, KeyboardInterrupt):
+        print >> sys.stderr, "Error in reading from stdin"
+        sys.exit(1)
+
+if not options.fullwindow and not sys.stdout.isatty():
+    options.text = True
+
+if not Lterm_cookie or options.text:
+    ascii_output(text, options)
+else:
+    graphical_output(text, options)

@@ -1,0 +1,11 @@
+The gcowsay file is in the public domain.
+
+The cow.svg image is from the xcowsay project
+   http://www.doof.me.uk/xcowsay/
+which is distributed under the GPLv3 License.
+(see COPYING.cow.svg.txt for details)
+
+If gcowsay is distributed as a package including cow.svg,
+the whole package will be governed by the GPLv3 License.
+(If a different image is substituted for cow.svg, then
+the license conditions for that image will apply.)
