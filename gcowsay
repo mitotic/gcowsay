@@ -275,7 +275,7 @@ def ascii_output(text, options):
     print cow_ascii
     sys.stdout.flush()
 
-usage = "usage: %prog [-f] [-t] word1 word2 ..."
+usage = "usage: %prog [options] word1 word2 ..."
 parser = OptionParser(usage=usage)
 parser.add_option("-f", "--fullwindow",
                   action="store_true", dest="fullwindow", default=False,
