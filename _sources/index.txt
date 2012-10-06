@@ -11,9 +11,12 @@ Welcome to GraphTerm
 .. toctree::
    :maxdepth: 1
 
-   troubleshooting
-   screenshots
-   release-notes
+   README <README>
+   Using GraphTerm <usage>
+   Troubleshooting <troubleshooting>
+   Implementation <implementation>
+   Screenshots <screenshots>
+   Release Notes <release-notes>
    Using the graphical features of GraphTerm <UsingGraphicalFeatures>
    Use as a remote terminal <UseAsRemoteTerminal>
 
