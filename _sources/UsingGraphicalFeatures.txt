@@ -1,6 +1,5 @@
 Using the graphical features of GraphTerm
 ***************************************************************************************
-.. sectnum::
 .. contents::
 
 Introduction
