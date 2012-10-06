@@ -11,7 +11,7 @@ Welcome to GraphTerm
 .. toctree::
    :maxdepth: 1
 
-   troubleshooring
+   troubleshooting
    screenshots
    release-notes
    Using the graphical features of GraphTerm <UsingGraphicalFeatures>
