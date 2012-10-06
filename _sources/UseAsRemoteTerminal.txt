@@ -1,5 +1,6 @@
 Use GraphTerm as a remote terminal (like screen or tmux)
 ***************************************************************************************
+.. sectnum::
 .. contents::
 
 
