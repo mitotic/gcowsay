@@ -4,7 +4,7 @@
 # and maybe re-used in any other project without any
 # restrictions.
 # It was developed as part of the GraphTerm project
-#    http://github.com/mitotic/graphterm
+#    https://github.com/mitotic/graphterm
 
 """
   cowsay ASCII art
